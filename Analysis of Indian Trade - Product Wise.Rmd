@@ -1,0 +1,118 @@
+---
+title: "Analysis of Indian Trade - Product Wise"
+author: "Team Q"
+date: "2023-04-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(shiny)
+library(plotly)
+library(dplyr)
+library(ggplot2)
+library(wordcloud2)
+```
+
+### **Imports of Products**
+
+```{r}
+ProdImport = read.csv("Indian Trade Analysis\\Generic Import Export Data\\Product_Import.csv")
+ProdImport <- ProdImport %>% replace(is.na(.), 0) 
+ProdImport <- ProdImport %>% mutate(sum_of_rows = rowSums(ProdImport[,-1]))
+df = data.frame(Product = ProdImport$Product.Group, Tot = ProdImport$sum_of_rows)
+wordcloud2(df, size=1.6, color='random-light', backgroundColor="black")
+```
+
+### **Exports of Products**
+
+```{r}
+ProdExport = read.csv("Indian Trade Analysis\\Generic Import Export Data\\Product_Export.csv")
+ProdExport <- ProdExport %>% replace(is.na(.), 0) 
+ProdExport <- ProdExport %>% mutate(sum_of_rows = rowSums(ProdExport[,-1]))
+df = data.frame(Product = ProdExport$Product.Group, Tot = ProdExport$sum_of_rows)
+dev.new()
+wordcloud2(df, size=1.6, color='random-light', backgroundColor="black")
+```
+
+```{r, echo=FALSE}
+shinyApp(
+  ui <- fluidPage(
+  
+  
+  titlePanel("Import and Export of Products"),
+
+    
+    mainPanel(
+              sliderInput("yrs", "Year:", min = 1988, max = 2020, value = 1988, step = 1),
+              plotlyOutput(outputId = "bargraph", height = "50%"),
+              plotlyOutput(outputId = "piegraph", height = "50%")
+    )
+),
+
+server <- function(input, output) {
+  
+  output$bargraph <- renderPlotly({
+    
+    path1 = "C:\\DARSHINI\\VIT\\SEMESTER_6 Winter(22-23)\\Data Analytics\\Indian Trade Analysis\\Generic Import Export Data\\Product_Export.csv"
+    path2 = "C:\\DARSHINI\\VIT\\SEMESTER_6 Winter(22-23)\\Data Analytics\\Indian Trade Analysis\\Generic Import Export Data\\Product_Import.csv"
+    
+    df1 <- read.csv(path1)
+    df2 <- read.csv(path2)
+    
+    df1 <- df1[-1,]
+    df2 <- df2[-1,]
+    
+    yr = paste("X",as.character(input$yrs),sep="")
+    
+    data <- data.frame(Product = df1$Product.Group, Export = df1[,yr], Import = df2[,yr])
+    
+    plot_ly(data, x = ~Product, y = ~Export, type = 'bar', name = 'Export') %>% add_trace(y = ~Import, name = 'Import') %>% layout(yaxis = list(title = 'Count'), barmode = 'group')
+    
+  })
+  
+  output$piegraph <- renderPlotly({
+    
+    path1 = "C:\\DARSHINI\\VIT\\SEMESTER_6 Winter(22-23)\\Data Analytics\\Indian Trade Analysis\\Generic Import Export Data\\Product_Export.csv"
+    path2 = "C:\\DARSHINI\\VIT\\SEMESTER_6 Winter(22-23)\\Data Analytics\\Indian Trade Analysis\\Generic Import Export Data\\Product_Import.csv"
+    
+    df1 <- read.csv(path1)
+    df2 <- read.csv(path2)
+    
+    df1 <- df1[-1,]
+    df2 <- df2[-1,]
+    
+    yr = paste("X",as.character(input$yrs),sep="")
+    
+    pie1 = df1[5:nrow(df1),c("Product.Group",yr)]
+    pie2 = df2[5:nrow(df2),c("Product.Group",yr)]
+    pie3 = df1[1:4,c("Product.Group",yr)]
+    pie4 = df2[1:4,c("Product.Group",yr)]
+    
+    pie1[,2] = as.numeric(pie1[,2])
+    pie2[,2] = as.numeric(pie2[,2])
+    pie3[,2] = as.numeric(pie3[,2])
+    pie4[,2] = as.numeric(pie4[,2])
+    
+    pie1 <- cbind(pie1, Part = pie1[,2]/sum(pie1[,2]))
+    pie2 <- cbind(pie2, Part = pie2[,2]/sum(pie2[,2]))
+    pie3 <- cbind(pie3, Part = pie3[,2]/sum(pie3[,2]))
+    pie4 <- cbind(pie4, Part = pie4[,2]/sum(pie4[,2]))
+      
+    plot_ly() %>% 
+    add_pie(data = pie1, labels = ~Product.Group, values = ~Part, name = "Exports", domain = list(row = 0, column = 0), title="Product Exports") %>% 
+    add_pie(data = pie2, labels = ~Product.Group, values = ~Part, name = "Imports", domain = list(row = 0, column = 1), title="Product Imports") %>% 
+    add_pie(data = pie3, labels = ~Product.Group, values = ~Part, name = "Exports", domain = list(row = 0, column = 2), title="Goods Exports") %>% 
+    add_pie(data = pie4, labels = ~Product.Group, values = ~Part, name = "Imports", domain = list(row = 0, column = 3), title="Goods Imports") %>% 
+    layout(title = "Propotion of Import Export", showlegend = F, grid=list(rows=1, columns=4), xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE), yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+  
+  })
+},
+
+# Run the application 
+shinyApp(ui = ui, server = server) 
+)
+```

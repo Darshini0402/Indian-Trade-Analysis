@@ -1,0 +1,196 @@
+---
+title: "Analysis of Indian Trade - Country Wise"
+author: "Team Q"
+date: "2023-04-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, warning=FALSE}
+library(plotly)
+library(reshape2)
+library(dplyr)
+library(countrycode)
+library(tseries)
+library(ggplot2)
+library(forecast)
+library(wordcloud2)
+library(knitr)
+
+opts_chunk$set(fig.keep="all")
+```
+
+```{r, warning=FALSE}
+FileProcessing <- function(filename){
+  File = data.frame(read.csv(filename, check.names = FALSE))
+  File = File[complete.cases(File),]
+  File <- data.frame(t(File))
+  colnames(File) <- File[1,]
+  File = File[-1,]
+  File <- data.frame(lapply(File,as.double),row.names = rownames(File))
+  rownames(File) = c(1988:2020)
+  File = rbind(File,colSums(File))
+  File = cbind(as.numeric(rownames(File)),File)
+  colnames(File)[1] = "Year"
+  rownames(File)[nrow(File)] = "Total"
+  return(File)
+}
+```
+
+```{r, warning=FALSE}
+Import_Export_GDP = FileProcessing("Indian Trade Analysis/Generic Import Export Data/Total_Import_Export.csv")
+Import_Export_GDP = Import_Export_GDP[-nrow(Import_Export_GDP),]
+```
+
+## **India Imports**
+
+### **India's Import Countries**
+
+```{r, warning=FALSE}
+Import = read.csv("Indian Trade Analysis\\Generic Import Export Data\\India_Imports.csv")
+Import <- Import %>% replace(is.na(.), 0) 
+Import <- Import %>% mutate(sum_of_rows = rowSums(Import[,-1]))
+df = data.frame(Country = Import$Partner.Name, Tot = Import$sum_of_rows)
+wordcloud2(df, size=1.6, color='random-light', backgroundColor="black")
+```
+
+### **India's Imports over the years**
+
+```{r, echo=FALSE, warning=FALSE}
+htmltools::img(src = "imports.gif")
+```
+
+This graph shows how the order of countries from which India imports varies over the years. In the initial few years India had large imports from the US, while towards the recent years it's imports are more from China.
+
+### **Top 10 Countries from which India Imports**
+
+```{r, warning=FALSE}
+Import <- FileProcessing("Indian Trade Analysis/Generic Import Export Data/India_Imports.csv")
+Import <- Import[,order(-Import["Total",])]
+ImportTop <- Import[,1:10]
+ImportTop <- cbind(as.numeric(rownames(ImportTop)),ImportTop)
+colnames(ImportTop)[1] = "Year"
+ImportTop = ImportTop[-nrow(ImportTop),]
+
+data_long = melt(ImportTop, id="Year")
+dev.new()
+plot_ly(data_long, x = ~Year, y = ~value, type = 'scatter', mode = 'lines+marker', color = ~variable) 
+```
+
+The above graph shows the top 10 countries over the years from which India imports the most. China, USA, UAE, Saudi Arabia, etc are the prominent countries from which India imports. 
+
+### **India's Imports in the year 2020**
+
+```{r, warning=FALSE}
+TopImport = data.frame(Import = t(ImportTop["2020",]))
+TopImport = cbind(Country = rownames(TopImport),TopImport)
+TopImport = TopImport[-1,]
+TopImport$X2020 = (TopImport$X2020*100) / Import_Export_GDP["2020","Import"] 
+
+fig <- plot_ly(TopImport, labels = ~Country, values = ~X2020, type = 'pie')
+fig <- fig %>% layout(title = 'Top Importers by Countries in 2020',
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+
+fig
+```
+
+From the above graph it can be found that India was still dependent on China, USA, UAE, Saudi, etc for most of it's imports in 2020. It can be inferred that India is largely dependent on Chinese goods and exports, as a large part of India's imports is from China.
+
+### **India's imports over the world in 2020** 
+
+```{r, warning=FALSE}
+India_Import <- read.csv("Indian Trade Analysis/Generic Import Export Data/India_Imports.csv")
+India_Import <- India_Import %>% replace(is.na(.), 0) 
+India_Import <- India_Import %>% mutate(sum_of_rows = rowSums(India_Import[,-1]))
+India_Import["PartnerISO3"] = countrycode(India_Import$Partner.Name, origin = 'country.name', destination = 'iso3c')
+India_Import <- India_Import[complete.cases(India_Import),]
+```
+
+```{r, warning=FALSE}
+l <- list(color = toRGB("black"), width = 0.5)
+
+fig <- plot_ly(India_Import, type='choropleth', locations=India_Import$PartnerISO3, z=India_Import$sum_of_rows, text=India_Import$Partner.Name, colorscale="red", marker = list(line = l))
+
+fig
+```
+
+The above map shows the intensity of the imports of India across all countries in the year 2020.
+
+## **India Exports**
+
+### **India's Export Countries**
+
+```{r, warning=FALSE}
+Export = read.csv("Indian Trade Analysis\\Generic Import Export Data\\India_Exports.csv")
+Export <- Export %>% replace(is.na(.), 0) 
+Export <- Export %>% mutate(sum_of_rows = rowSums(Export[,-1]))
+df = data.frame(Country = Export$Partner.Name, Tot = Export$sum_of_rows)
+wordcloud2(df, size=1.6, color='random-light', backgroundColor="black")
+```
+
+### **India's Exports over the years**
+
+```{r, echo=FALSE, warning=FALSE}
+htmltools::img(src = "exports.gif")
+```
+
+This graph shows how the order of countries from which India exports varies over the years. US has been a constant large market for India, as India exports a major quantity to US.
+
+### **Top 10 Countries from which India Exports**
+
+```{r, warning=FALSE}
+Export <- FileProcessing("Indian Trade Analysis/Generic Import Export Data/India_Exports.csv")
+Export <- Export[,order(-Export["Total",])]
+ExportTop <- Export[,1:10]
+ExportTop <- cbind(as.numeric(rownames(ExportTop)),ExportTop)
+colnames(ExportTop)[1] = "Year"
+ExportTop = ExportTop[-nrow(ExportTop),]
+
+data_long = melt(ExportTop, id="Year")
+plot_ly(data_long, x = ~Year, y = ~value, type = 'scatter', mode = 'lines+marker', color = ~variable) 
+```
+
+The above graph shows the top 10 countries over the years to which India exports the most. USA, UAE, China, Hong Kong etc are the prominent countries to which India exports it's goods. The sudden dip in the exports in the year 2020 is due to the COVID 19 pandemic. This also goes in good correlation with the current statistical data. 
+
+### **India's Exports in the year 2020**
+
+```{r, warning=FALSE}
+TopExport = data.frame(Export = t(ExportTop["2020",]))
+TopExport = cbind(Country = rownames(TopExport),TopExport)
+TopExport = TopExport[-1,]
+TopExport$X2020 = (TopExport$X2020*100) / Import_Export_GDP["2020","Export"] 
+
+fig <- plot_ly(TopExport, labels = ~Country, values = ~X2020, type = 'pie')
+fig <- fig %>% layout(title = 'Top Exporters by Countries in 2020',
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+
+fig
+```
+
+From the above graph it can be found that India even during the COVID pandemic, India exported the maximum to USA followed by China closely.
+
+### **India's Exports over the world in 2020** 
+
+```{r, warning=FALSE}
+India_Export <- read.csv("Indian Trade Analysis/Generic Import Export Data/India_Exports.csv")
+India_Export <- India_Export %>% replace(is.na(.), 0) 
+India_Export <- India_Export %>% mutate(sum_of_rows = rowSums(India_Export[,-1]))
+India_Export["PartnerISO3"] = countrycode(India_Export$Partner.Name, origin = 'country.name', destination = 'iso3c')
+India_Export <- India_Export[complete.cases(India_Export),]
+```
+
+```{r, warning=FALSE}
+l <- list(color = toRGB("white"), width = 0.5)
+
+fig <- plot_ly(India_Export, type='choropleth', locations=India_Export$PartnerISO3, z=India_Export$sum_of_rows, text=India_Export$Partner.Name, colorscale="Greens", marker = list(line = l))
+
+fig
+```
+
+The above map shows the intensity of the imports of India across all countries in the year 2020.
+
